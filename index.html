@@ -221,10 +221,9 @@
       video.play();
       highlight();
       
-      // 如果在循环模式下，更新循环目标
+      // 如果在循环模式下，更新状态显示并保持循环
       if (loopMode) {
-        loopTargetIndex = idx;
-        statusDiv.textContent = `🔄 循环模式：第${idx + 1}句`;
+        statusDiv.textContent = `🔄 循环第${idx + 1}句`;
       }
     }
 
@@ -246,31 +245,25 @@
       }
     }
 
-    let loopTargetIndex = -1; // 记录要循环的字幕索引
-
     video.ontimeupdate = () => {
       const t = video.currentTime;
       
-      // 循环模式：优先处理循环逻辑
-      if (loopMode && loopTargetIndex >= 0 && loopTargetIndex < subtitles.length) {
-        const loopSub = subtitles[loopTargetIndex];
-        if (t >= loopSub.end) {
-          video.currentTime = loopSub.start;
-          return; // 直接返回，不更新currentIndex
+      // 循环模式：当前字幕结束时立即跳回开始
+      if (loopMode && currentIndex >= 0 && currentIndex < subtitles.length) {
+        const currentSub = subtitles[currentIndex];
+        if (t >= currentSub.end - 0.1) { // 提前0.1秒跳转，避免间隙
+          video.currentTime = currentSub.start;
+          return;
         }
-        // 确保当前显示的是循环目标字幕
-        if (currentIndex !== loopTargetIndex) {
-          currentIndex = loopTargetIndex;
-          highlight();
-        }
-        return;
       }
       
-      // 正常模式：根据时间更新字幕
-      const idx = subtitles.findIndex(s=>t>=s.start&&t<s.end);
-      if (idx!==-1 && idx!==currentIndex) {
-        currentIndex = idx;
-        highlight();
+      // 正常模式或循环模式下的字幕更新
+      if (!loopMode) {
+        const idx = subtitles.findIndex(s=>t>=s.start&&t<s.end);
+        if (idx!==-1 && idx!==currentIndex) {
+          currentIndex = idx;
+          highlight();
+        }
       }
     };
 
@@ -279,12 +272,20 @@
     nextBtn.onclick  = ()=>jump(Math.min(subtitles.length-1, currentIndex+1));
     playBtn.onclick  = () => {
       video.play();
-      statusDiv.textContent = '▶️ 播放中...';
+      if (loopMode) {
+        statusDiv.textContent = `🔄 循环第${currentIndex + 1}句`;
+      } else {
+        statusDiv.textContent = '▶️ 播放中...';
+      }
     };
     pauseBtn.onclick = () => {
       if (video.paused) {
         video.play();
-        statusDiv.textContent = '▶️ 播放中...';
+        if (loopMode) {
+          statusDiv.textContent = `🔄 循环第${currentIndex + 1}句`;
+        } else {
+          statusDiv.textContent = '▶️ 播放中...';
+        }
       } else {
         video.pause();
         statusDiv.textContent = '⏸️ 已暂停';
@@ -292,23 +293,20 @@
     };
     loopBtn.onclick  = () => {
       loopMode = !loopMode;
-      if (loopMode) {
-        // 开启循环：记录当前字幕索引
-        loopTargetIndex = currentIndex;
-        if (loopTargetIndex >= 0 && loopTargetIndex < subtitles.length) {
-          // 跳转到循环字幕的开始位置
-          video.currentTime = subtitles[loopTargetIndex].start;
-          statusDiv.textContent = `🔄 循环模式：第${loopTargetIndex + 1}句`;
-        } else {
-          statusDiv.textContent = '🔄 循环模式已开启（请先选择字幕）';
-        }
-      } else {
-        // 关闭循环
-        loopTargetIndex = -1;
-        statusDiv.textContent = '⏸️ 循环模式已关闭';
-      }
       loopBtn.style.backgroundColor = loopMode ? '#ff8fcc' : '#ff6eb4';
       loopBtn.style.transform = loopMode ? 'scale(1.1)' : 'scale(1)';
+      
+      if (loopMode) {
+        if (currentIndex >= 0 && currentIndex < subtitles.length) {
+          // 跳转到当前字幕的开始位置
+          video.currentTime = subtitles[currentIndex].start;
+          statusDiv.textContent = `🔄 循环第${currentIndex + 1}句`;
+        } else {
+          statusDiv.textContent = '🔄 循环模式（请先选择字幕）';
+        }
+      } else {
+        statusDiv.textContent = '⏸️ 循环模式已关闭';
+      }
     };
     increaseBtn.onclick = ()=>{
       fontSize += 2;
@@ -343,7 +341,11 @@
           // 空格键播放/暂停切换
           if (video.paused) {
             video.play();
-            statusDiv.textContent = '▶️ 播放中...';
+            if (loopMode) {
+              statusDiv.textContent = `🔄 循环第${currentIndex + 1}句`;
+            } else {
+              statusDiv.textContent = '▶️ 播放中...';
+            }
           } else {
             video.pause();
             statusDiv.textContent = '⏸️ 已暂停';
