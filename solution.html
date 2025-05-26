@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>English Video Study</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin:0; padding:0; width:100%; height:100%;
+      font-family:'Fredoka',sans-serif;
+      background: linear-gradient(to bottom right,#fce4ec,#f3e5f5);
+      display:flex; flex-direction:column; overflow:hidden;
+    }
+    header { padding:10px 20px; background:transparent; display:flex; align-items:center; }
+    header h1 { 
+      flex:1; margin:0; font-size:20px; color:#880e4f; 
+      display: flex; align-items: center;
+    }
+    header h1 svg {
+      margin-right: 10px;
+    }
+    .top-controls { display:flex; gap:10px; }
+    .top-controls button {
+      padding:6px 12px; border:none; border-radius:20px;
+      background:#f06292; color:#fff; font-size:14px; cursor:pointer;
+    }
+    .offset-input {
+      background:#fff; color:#000; border:1px solid #f06292;
+      width:50px; border-radius:20px; text-align:center; padding:6px;
+    }
+    
+    /* 新布局样式 */
+    .new-layout {
+      display: flex;
+      padding: 20px;
+      gap: 20px;
+      height: calc(100vh - 70px);
+      overflow: hidden;
+    }
+    
+    .left-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+    
+    .video-container {
+      background: #fff;
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    
+    .search-section {
+      background: #fff;
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 200px;
+      overflow: hidden;
+    }
+    
+    .subtitles-container {
+      flex: 1;
+      background: #fff;
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .video-wrapper { position:relative; }
+    video {
+      width:100%; height:48vh; background:#000; border-radius:12px;
+      position:relative; z-index:2;
+    }
+    .current-sub {
+      position:absolute; bottom:60px; left:50%; transform:translateX(-50%);
+      background:rgba(0,0,0,0.6); color:#fff;
+      padding:6px 12px; border-radius:4px; font-size:18px; line-height:1.2;
+      width:calc(100% - 32px); text-align:center; z-index:3;
+      white-space:normal;
+    }
+    .circle-buttons { display:flex; justify-content:center; gap:12px; margin:16px 0; }
+    .circle-buttons button {
+      width:50px; height:50px; border:none; border-radius:50%; background:#ff6eb4;
+      color:#fff; font-size:20px; display:flex; align-items:center; justify-content:center;
+      cursor:pointer;
+    }
+    .circle-buttons button:hover { background:#ff8fcc; }
+    #status { color:#6a1b9a; font-size:14px; margin-bottom:12px; }
+    
+    .search-controls { 
+      display:flex; 
+      gap:12px; 
+      margin-bottom:10px;
+    }
+    .search-controls input {
+      flex:1; 
+      padding:12px; 
+      border:1px solid #f8bbd0; 
+      border-radius:8px; 
+      font-size:16px;
+    }
+    .search-controls button {
+      padding:10px 16px; 
+      border:none; 
+      border-radius:20px;
+      background:#f06292; 
+      color:#fff; 
+      font-size:15px;
+    }
+    .search-controls button:hover {
+      background:#e91e63;
+    }
+    .search-actions {
+      display:flex; 
+      gap:10px; 
+      margin-top:5px;
+    }
+    .translation {
+      flex: 1;
+      padding:16px; 
+      background:#fff; 
+      border-radius:12px;
+      font-size:15px; 
+      overflow-y:auto;
+      border:1px solid #f8bbd0;
+      position: relative;
+    }
+    
+    .translation::before {
+      content: "中文解释:";
+      display: block;
+      font-size: 14px;
+      color: #880e4f;
+      margin-bottom: 8px;
+    }
+    #subtitles {
+      flex:1; overflow-y:auto; border:2px solid #f8bbd0;
+      border-radius:12px; padding:8px; font-size:16px;
+      height:100%; max-height:100%;
+    }
+    .subtitle-line {
+      padding:8px; margin-bottom:4px; cursor:pointer;
+      transition:background 0.2s;
+    }
+    .subtitle-line.active, .subtitle-line:hover {
+      background:#f48fb1; color:#fff;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82zM12 3L1 9l11 6 9-4.91V17h2V9L12 3z" fill="#880e4f"/>
+      </svg>
+      English Video Study
+    </h1>
+    <div class="top-controls">
+      <button onclick="videoFile.click()">Video</button>
+      <button onclick="srtFile.click()">Subtitle</button>
+      <input type="number" id="offsetInput" class="offset-input" value="0" step="0.1" title="Offset seconds">
+    </div>
+  </header>
+
+  <input type="file" id="videoFile" accept="video/mp4,video/webm,video/x-matroska,.mkv" style="display:none">
+  <input type="file" id="srtFile" accept=".srt" style="display:none">
+
+  <div class="new-layout">
+    <div class="left-panel">
+      <div class="video-container">
+        <div class="video-wrapper">
+          <video id="video" controls></video>
+          <div id="currentSub" class="current-sub"></div>
+        </div>
+        <div class="circle-buttons">
+          <button id="prevBtn">&#x23EE;</button>
+          <button id="playBtn">&#x25B6;</button>
+          <button id="pauseBtn">&#x23F8;</button>
+          <button id="nextBtn">&#x23ED;</button>
+          <button id="loopBtn">&#x27F3;</button>
+          <button id="increaseBtn">A+</button>
+          <button id="decreaseBtn">A-</button>
+        </div>
+        <div id="status">Upload video and subtitle to begin</div>
+        <div style="font-size:12px;color:#666;margin-top:8px;">
+          ⌨️ 快捷键：↑上一句 ↓下一句 空格播放/暂停
+        </div>
+      </div>
+
+      <div class="search-section">
+        <div class="search-controls">
+          <input type="text" id="searchInput" placeholder="Search word...">
+          <button id="searchBtn">Search</button>
+        </div>
+        <div id="translation" class="translation"></div>
+      </div>
+    </div>
+    
+    <div class="subtitles-container">
+      <div id="subtitles"></div>
+    </div>
+  </div>
+
+  <script>
+    const video = document.getElementById('video'),
+          videoFile = document.getElementById('videoFile'),
+          srtFile = document.getElementById('srtFile'),
+          offsetInput = document.getElementById('offsetInput'),
+          subtitlesDiv = document.getElementById('subtitles'),
+          currentSub = document.getElementById('currentSub'),
+          playBtn = document.getElementById('playBtn'),
+          pauseBtn = document.getElementById('pauseBtn'),
+          prevBtn = document.getElementById('prevBtn'),
+          nextBtn = document.getElementById('nextBtn'),
+          loopBtn = document.getElementById('loopBtn'),
+          increaseBtn = document.getElementById('increaseBtn'),
+          decreaseBtn = document.getElementById('decreaseBtn'),
+          statusDiv = document.getElementById('status'),
+          searchInput = document.getElementById('searchInput'),
+          searchBtn = document.getElementById('searchBtn'),
+          translationDiv = document.getElementById('translation');
+    let subtitles = [], currentIndex = -1, loopMode = false, fontSize = 18, loopTargetIndex = -1;
+
+    // Load video
+    videoFile.onchange = e => {
+      const f = e.target.files[0]; if (!f) return;
+      video.src = URL.createObjectURL(f);
+      video.load();
+      video.oncanplay = () => statusDiv.textContent = `🎬 Video ready: ${f.name}`;
+    };
+
+    // Load subtitles
+    srtFile.onchange = e => {
+      const f = e.target.files[0]; if (!f) return;
+      const r = new FileReader();
+      r.onload = () => {
+        subtitles = parseSRT(r.result);
+        renderSubtitles();
+        statusDiv.textContent = `📝 Subtitles loaded (${subtitles.length})`;
+      };
+      r.readAsText(f);
+    };
+
+    // Parse SRT into [{start,end,zh,en},...]
+    function parseSRT(data) {
+      const off = parseFloat(offsetInput.value) || 0;
+      const blocks = data.trim().split(/\r?\n\r?\n/);
+      const result = [];
+      
+      console.log('[INFO] Starting SRT parsing, total blocks:', blocks.length);
+      
+      blocks.forEach((block, blockIndex) => {
+        const lines = block.split(/\r?\n/);
+        console.log(`[BLOCK ${blockIndex + 1}] Raw content:`, lines);
+        
+        if (lines.length < 2) {
+          console.log(`[BLOCK ${blockIndex + 1}] Skipping: Not enough lines`);
+          return;
+        }
+        
+        // 查找时间行
+        let timeLineIndex = -1;
+        let timeLine = '';
+        
+        for (let i = 0; i < lines.length; i++) {
+          if (lines[i].includes('-->')) {
+            timeLineIndex = i;
+            timeLine = lines[i];
+            break;
+          }
+        }
+        
+        if (timeLineIndex === -1) {
+          console.log(`[BLOCK ${blockIndex + 1}] Skipping: No time line found`);
+          return;
+        }
+        
+        // 解析时间
+        const timeRegex = /(\d+):(\d+):(\d+),(\d+)\s*-->\s*(\d+):(\d+):(\d+),(\d+)/;
+        const m = timeLine.match(timeRegex);
+        if (!m) {
+          console.log(`[BLOCK ${blockIndex + 1}] Skipping: Invalid time format`);
+          return;
+        }
+        
+        const st = +m[1]*3600 + +m[2]*60 + +m[3] + +m[4]/1000 + off;
+        const et = +m[5]*3600 + +m[6]*60 + +m[7] + +m[8]/1000 + off;
+        
+        // 获取所有字幕内容行（从时间行之后开始）
+        const contentLines = lines.slice(timeLineIndex + 1)
+          .filter(line => line.trim()) // 过滤空行
+          .filter(line => !line.includes('{\\')) // 过滤ASS/SSA样式标记
+          .map(line => line.trim());
+        
+        console.log(`[BLOCK ${blockIndex + 1}] Content lines:`, contentLines);
+        
+        if (contentLines.length === 0) {
+          console.log(`[BLOCK ${blockIndex + 1}] Skipping: No valid content`);
+          return;
+        }
+        
+        let zh = '', en = '';
+        
+        if (contentLines.length === 1) {
+          // 单行内容：检测是否为中文
+          const content = contentLines[0];
+          if (/[\u4e00-\u9fff]/.test(content)) {
+            // 包含中文字符，当作中文
+            zh = content;
+            en = '';
+            console.log(`[BLOCK ${blockIndex + 1}] Chinese only: "${zh}"`);
+          } else {
+            // 纯英文
+            zh = '';
+            en = content;
+            console.log(`[BLOCK ${blockIndex + 1}] English only: "${en}"`);
+          }
+        } else if (contentLines.length === 2) {
+          // 双行内容：第一行中文，第二行英文
+          const line1 = contentLines[0];
+          const line2 = contentLines[1];
+          
+          if (/[\u4e00-\u9fff]/.test(line1) && !/[\u4e00-\u9fff]/.test(line2)) {
+            // 第一行有中文，第二行无中文 -> 双语格式
+            zh = line1;
+            en = line2;
+            console.log(`[BLOCK ${blockIndex + 1}] Bilingual: CN="${zh}" EN="${en}"`);
+          } else {
+            // 其他情况：合并为英文
+            zh = '';
+            en = contentLines.join(' ');
+            console.log(`[BLOCK ${blockIndex + 1}] Merged English: "${en}"`);
+          }
+        } else {
+          // 多行内容：合并为英文
+          zh = '';
+          en = contentLines.join(' ');
+          console.log(`[BLOCK ${blockIndex + 1}] Multi-line English: "${en}"`);
+        }
+        
+        // 只要有内容就添加
+        if (zh || en) {
+          result.push({
+            start: st,
+            end: et,
+            zh: zh,
+            en: en
+          });
+          console.log(`[BLOCK ${blockIndex + 1}] Added: ${st.toFixed(2)}s-${et.toFixed(2)}s`);
+        } else {
+          console.log(`[BLOCK ${blockIndex + 1}] Skipping: No valid content`);
+        }
+      });
+      
+      console.log('[SUCCESS] Parsing complete, total subtitles:', result.length);
+      return result;
+    }
+
+    // Render subtitles (中文小字在上，英文大字在下)
+    function renderSubtitles() {
+      subtitlesDiv.innerHTML = '';
+      console.log('Rendering subtitles, total:', subtitles.length);
+      
+      subtitles.forEach((sub, i) => {
+        console.log(`Subtitle ${i+1}: CN="${sub.zh}", EN="${sub.en}"`);
+        
+        const div = document.createElement('div');
+        div.className = 'subtitle-line';
+        
+        // 根据是否有中文内容决定显示方式
+        if (sub.zh) {
+          // 双语字幕：中文在上，英文在下
+          div.innerHTML = `
+            <p style="margin:0;color:#880e4f;font-size:12px;line-height:1.3;">${sub.zh}</p>
+            <p style="margin:4px 0 0;color:#333;font-size:24px;font-weight:500;line-height:1.2;">${sub.en}</p>
+          `;
+        } else {
+          // 纯英文字幕：只显示英文
+          div.innerHTML = `
+            <p style="margin:0;color:#333;font-size:24px;font-weight:500;line-height:1.2;">${sub.en}</p>
+          `;
+        }
+        
+        div.onclick = () => jump(i);
+        subtitlesDiv.appendChild(div);
+      });
+    }
+
+    // Seek & highlight
+    function jump(idx) {
+      if (idx < 0 || idx >= subtitles.length) {
+        console.log(`[JUMP] Invalid index: ${idx}, valid range: 0-${subtitles.length-1}`);
+        return;
+      }
+      
+      console.log(`[JUMP] Jumping to subtitle ${idx+1}`);
+      currentIndex = idx;
+      video.currentTime = subtitles[idx].start;
+      video.play().catch(err => console.log('[ERROR] Play failed:', err));
+      highlight();
+      
+      // 循环模式下：切换到新句子后立即开始循环
+      if (loopMode) {
+        console.log(`[LOOP] Sticking to subtitle ${idx+1} in loop mode`);
+        statusDiv.textContent = `🔄 Sticky loop mode: Subtitle ${idx + 1}`;
+      }
+    }
+
+    function highlight() {
+      const lines = subtitlesDiv.querySelectorAll('.subtitle-line');
+      lines.forEach((el,i)=>el.classList.toggle('active', i===currentIndex));
+      const active = lines[currentIndex];
+      if (active) active.scrollIntoView({behavior:'smooth', block:'center'});
+
+      // Video overlay: 根据字幕类型显示
+      if (currentIndex >= 0 && currentIndex < subtitles.length) {
+        const sub = subtitles[currentIndex];
+        
+        if (sub.zh) {
+          // 双语字幕：中文在上(小字)，英文在下(大字)
+          currentSub.innerHTML = `
+            <div style="line-height:1.2; text-shadow:0 2px 4px rgba(0,0,0,0.8);">
+              <div style="font-size:${Math.floor(fontSize*0.6)}px; color:#f8bbd0;">${sub.zh}</div>
+              <div style="font-size:${fontSize}px; color:#fff; font-weight:500;">${sub.en}</div>
+            </div>
+          `;
+        } else {
+          // 纯英文字幕：只显示英文
+          currentSub.innerHTML = `
+            <div style="line-height:1.2; text-shadow:0 2px 4px rgba(0,0,0,0.8);">
+              <div style="font-size:${fontSize}px; color:#fff; font-weight:500;">${sub.en}</div>
+            </div>
+          `;
+        }
+      }
+    }
+
+    video.ontimeupdate = () => {
+      const t = video.currentTime;
+      
+      // 🔄 循环模式：ALWAYS循环当前句子，不管怎么切换
+      if (loopMode && currentIndex >= 0 && currentIndex < subtitles.length) {
+        const currentSub = subtitles[currentIndex];
+        
+        // 当前句子播放结束时，立即跳回开始继续循环
+        if (t >= currentSub.end - 0.05) {
+          console.log(`[LOOP] End detected: ${t.toFixed(2)} >= ${currentSub.end.toFixed(2)}, jumping to start ${currentSub.start.toFixed(2)}`);
+          video.currentTime = currentSub.start;
+          return; // 循环跳转后不执行其他逻辑
+        }
+        
+        // 循环模式下：如果播放位置不在当前句子范围内，强制跳回
+        if (t < currentSub.start - 0.2 || t > currentSub.end + 0.2) {
+          console.log(`[LOOP] Out of range: current=${t.toFixed(2)}, valid=${currentSub.start.toFixed(2)}-${currentSub.end.toFixed(2)}, forcing return`);
+          video.currentTime = currentSub.start;
+          return;
+        }
+      } else {
+        // 正常模式：自动跟随字幕
+        const idx = subtitles.findIndex(s=>t>=s.start&&t<s.end);
+        if (idx!==-1 && idx!==currentIndex) {
+          console.log(`[AUTO] Changing subtitle to ${idx+1}`);
+          currentIndex = idx;
+          highlight();
+        }
+      }
+    };
+
+    // Controls
+    prevBtn.onclick  = () => jump(Math.max(0, currentIndex-1));
+    nextBtn.onclick  = () => jump(Math.min(subtitles.length-1, currentIndex+1));
+    playBtn.onclick  = () => {
+      video.play();
+      if (loopMode && currentIndex >= 0) {
+        statusDiv.textContent = `🔄 Sticky loop mode: Subtitle ${currentIndex + 1}`;
+      } else {
+        statusDiv.textContent = '▶️ Playing...';
+      }
+    };
+    pauseBtn.onclick = () => {
+      if (video.paused) {
+        video.play();
+        if (loopMode && currentIndex >= 0) {
+          statusDiv.textContent = `🔄 Sticky loop mode: Subtitle ${currentIndex + 1}`;
+        } else {
+          statusDiv.textContent = '▶️ Playing...';
+        }
+      } else {
+        video.pause();
+        statusDiv.textContent = '⏸️ Paused';
+      }
+    };
+    loopBtn.onclick  = () => {
+      loopMode = !loopMode;
+      
+      console.log(`[LOOP] Loop mode ${loopMode ? 'ENABLED' : 'DISABLED'}`);
+      
+      if (loopMode) {
+        // 🔄 开启粘性循环模式 - 简洁深色加粗效果
+        loopBtn.style.backgroundColor = '#d81b60'; // 更深的粉色
+        loopBtn.style.fontWeight = 'bold';
+        loopBtn.style.transform = 'none';
+        loopBtn.style.boxShadow = 'none';
+        loopBtn.innerHTML = '&#x27F3;'; // 保持一致的图标
+        
+        if (currentIndex >= 0 && currentIndex < subtitles.length) {
+          // 跳转到当前字幕的开始位置
+          console.log(`[LOOP] Resetting current subtitle ${currentIndex+1} to start time`);
+          video.currentTime = subtitles[currentIndex].start;
+          statusDiv.textContent = `🔄 Loop mode: Subtitle ${currentIndex + 1}`;
+        } else {
+          statusDiv.textContent = '🔄 Loop mode enabled';
+        }
+      } else {
+        // 关闭循环模式 - 恢复正常状态
+        loopBtn.style.backgroundColor = '#ff6eb4'; // 原来的粉色
+        loopBtn.style.fontWeight = 'normal';
+        loopBtn.style.transform = 'none';
+        loopBtn.style.boxShadow = 'none';
+        loopBtn.innerHTML = '&#x27F3;';
+        statusDiv.textContent = 'Loop mode disabled';
+      }
+    };
+    increaseBtn.onclick = ()=>{
+      fontSize += 2;
+      currentSub.style.fontSize = fontSize+'px';
+    };
+    decreaseBtn.onclick = ()=>{
+      if (fontSize>10) fontSize -= 2, currentSub.style.fontSize = fontSize+'px';
+    };
+
+    // Keyboard controls
+    document.addEventListener('keydown', (e) => {
+      // 防止在输入框中触发
+      if (e.target.tagName === 'INPUT') return;
+      
+      switch(e.key) {
+        case 'ArrowUp':
+          e.preventDefault();
+          // 上一句
+          if (currentIndex > 0) {
+            jump(currentIndex - 1);
+          }
+          break;
+        case 'ArrowDown':
+          e.preventDefault();
+          // 下一句
+          if (currentIndex < subtitles.length - 1) {
+            jump(currentIndex + 1);
+          }
+          break;
+        case ' ':
+          e.preventDefault();
+          // 空格键播放/暂停切换
+          if (video.paused) {
+            video.play();
+            if (loopMode && currentIndex >= 0) {
+              statusDiv.textContent = `🔄 Sticky loop mode: Subtitle ${currentIndex + 1}`;
+            } else {
+              statusDiv.textContent = '▶️ Playing...';
+            }
+          } else {
+            video.pause();
+            statusDiv.textContent = '⏸️ Paused';
+          }
+          break;
+      }
+    });
+
+    // 添加回车键搜索功能
+    searchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        searchBtn.click();
+      }
+    });
+
+    // 重写搜索功能 - 先本地词典，后API
+    searchBtn.onclick = function() {
+      const word = searchInput.value.trim().toLowerCase();
+      if (!word) return;
+      
+      console.log(`[SEARCH] 搜索单词: "${word}"`);
+      
+      // 显示加载提示
+      translationDiv.innerHTML = `<div style=\"margin-bottom:10px;\"><p>🔍 正在查询...</p></div>`;
+      
+      // 优先本地词典
+      if (commonWords[word]) {
+        showTranslation(word, commonWords[word], phonetics[word] || "");
+        return;
+      }
+      // 本地没有，尝试在线API
+      // 先MyMemory，再DictionaryAPI
+      fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(word)}&langpair=en|zh-CN`)
+        .then(res => res.json())
+        .then(data => {
+          let translation = '';
+          if (data && data.responseData && data.responseData.translatedText) {
+            translation = data.responseData.translatedText;
+            if (translation.includes('MyMemory')) {
+              translation = translation.split('MyMemory')[0].trim();
+            }
+          }
+          if (translation && translation !== word) {
+            showTranslation(word, [translation], '');
+          } else {
+            // 再试 DictionaryAPI
+            fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`)
+              .then(r => r.json())
+              .then(dictData => {
+                let phonetic = '';
+                let defs = [];
+                if (Array.isArray(dictData) && dictData.length > 0) {
+                  if (dictData[0].phonetics && dictData[0].phonetics.length > 0) {
+                    const p = dictData[0].phonetics.find(x => x.text);
+                    if (p) phonetic = p.text;
+                  }
+                  if (dictData[0].meanings && dictData[0].meanings.length > 0) {
+                    dictData[0].meanings.forEach(m => {
+                      if (m.definitions && m.definitions.length > 0) {
+                        defs.push(m.definitions[0].definition);
+                      }
+                    });
+                  }
+                }
+                if (defs.length > 0) {
+                  showTranslation(word, defs, phonetic);
+                } else {
+                  showTranslation(word, [], phonetic);
+                }
+              })
+              .catch(() => showTranslation(word, [], ''));
+          }
+        })
+        .catch(() => {
+          // API失败，直接显示无结果
+          showTranslation(word, [], '');
+        });
+    };
+
+    // 展示翻译和音标，调整行间距
+    function showTranslation(word, translations, phonetic) {
+      let result = `<div style=\"padding:15px;\">`;
+      result += `<div style=\"display:flex;align-items:center;margin-bottom:10px;\">
+        <h3 style=\"margin:0;font-size:22px;color:#d81b60;\">${word}</h3>
+        <span style=\"margin-left:10px;color:#666;font-size:15px;\">${phonetic || ''}</span>
+        <button id=\"pronounceBtn\" style=\"margin-left:auto;background:#9c27b0;color:white;border:none;padding:5px 10px;border-radius:4px;cursor:pointer;\">
+          🔊 发音
+        </button>
+      </div>`;
+      result += `<h4 style=\"margin:0 0 8px 0;color:#d81b60;font-size:15px;\">中文解释:</h4>`;
+      if (translations && translations.length > 0) {
+        result += `<ol style=\"margin:0;padding-left:22px;line-height:1.5;\">`;
+        translations.forEach(function(trans) {
+          result += `<li style=\"margin-bottom:5px;font-size:15px;font-weight:500;line-height:1.5;\">${trans}</li>`;
+        });
+        result += `</ol>`;
+      } else {
+        result += `<p style=\"color:#666;line-height:1.5;\">未找到\"${word}\"的常用翻译和音标。</p>`;
+        result += `<p style=\"color:#666;font-size:13px;line-height:1.5;\">提示：尝试搜索常用单词，如 run, get, make, take 等。</p>`;
+      }
+      result += `</div>`;
+      translationDiv.innerHTML = result;
+      document.getElementById('pronounceBtn').onclick = function() {
+        const utterance = new SpeechSynthesisUtterance(word);
+        utterance.lang = 'en-US';
+        speechSynthesis.speak(utterance);
+      };
+    }
+
+    // 常用英语单词词典数据
+    const commonWords = {
+      "run": ["跑，奔跑", "运行，开动", "管理，经营"],
+      "set": ["设置，放置", "一套，一组", "固定的，不变的"],
+      "go": ["去，离开", "进行，进展", "尝试，努力"],
+      "make": ["制作，创造", "使得，促使", "获得，赚得"],
+      "take": ["拿，取", "接受", "花费（时间）"],
+      "come": ["来，来到", "出现", "发生"],
+      "get": ["得到，获得", "变得", "到达"],
+      "give": ["给予", "递给", "举行，举办"],
+      "see": ["看见", "理解", "拜访"],
+      "look": ["看，注视", "看起来", "寻找"],
+      "find": ["发现", "查明", "感觉，认为"],
+      "say": ["说", "表达", "假设"],
+      "use": ["使用", "消耗", "习惯"],
+      "tell": ["告诉", "辨别", "命令"],
+      "work": ["工作", "运转", "起作用"],
+      "call": ["打电话", "叫喊", "命名"],
+      "try": ["尝试", "试图", "审判"],
+      "ask": ["问", "要求", "邀请"],
+      "need": ["需要", "必须", "贫困"],
+      "feel": ["感觉", "摸，触", "认为"],
+      "read": ["阅读", "理解", "显示（数值）"],
+      "put": ["放，置", "表达", "提出"],
+      "play": ["玩", "播放", "演奏"],
+      "move": ["移动", "搬家", "感动"],
+      "help": ["帮助", "改善", "避免"],
+      "talk": ["谈话", "讨论", "演讲"],
+      "turn": ["转动", "变成", "轮流"],
+      "start": ["开始", "创办", "启动"],
+      "show": ["展示", "表明", "证明"],
+      "hear": ["听见", "得知", "审理"],
+      "walk": ["步行", "遛（狗）", "漫步"],
+      "write": ["写", "写作", "开（支票等）"],
+      "sit": ["坐", "担任", "开会"],
+      "stand": ["站立", "位于", "忍受"],
+      "lose": ["失去", "输掉", "错过"],
+      "pay": ["付款", "给予", "值得"],
+      "meet": ["遇见", "满足", "迎接"],
+      "drive": ["驾驶", "驱使", "开车送"],
+      "stop": ["停止", "阻止", "逗留"],
+      "follow": ["跟随", "遵循", "理解"],
+      "learn": ["学习", "得知", "记住"],
+      "speak": ["说话", "演讲", "表达"],
+      "let": ["让", "允许", "出租"],
+      "keep": ["保持", "继续", "饲养"],
+      "leave": ["离开", "遗留", "委托"],
+      "break": ["打破", "休息", "突破"],
+      "like": ["喜欢", "像，如同", "例如"],
+      "think": ["思考", "认为", "想象"],
+      "want": ["想要", "需要", "缺乏"],
+      "open": ["打开", "开始", "坦率的"],
+      "close": ["关闭", "靠近", "结束"],
+      "good": ["好的", "有益的", "熟练的"],
+      "bad": ["坏的", "有害的", "不舒服的"],
+      "big": ["大的", "重要的", "成功的"],
+      "small": ["小的", "不重要的", "狭窄的"],
+      "high": ["高的", "高级的", "高价的"],
+      "low": ["低的", "低级的", "低价的"],
+      "long": ["长的", "持久的", "冗长的"],
+      "short": ["短的", "简洁的", "缺乏的"],
+      "hard": ["硬的", "困难的", "努力地"],
+      "easy": ["容易的", "舒适的", "随和的"],
+      "fast": ["快的", "迅速的", "坚固的"],
+      "slow": ["慢的", "缓慢的", "迟钝的"],
+      "hot": ["热的", "辣的", "流行的"],
+      "cold": ["冷的", "冷淡的", "感冒"],
+      "new": ["新的", "最近的", "不熟悉的"],
+      "old": ["旧的", "年老的", "古老的"],
+      "right": ["正确的", "右边的", "权利"],
+      "wrong": ["错误的", "不适当的", "不公正的"],
+      "early": ["早的", "提前的", "初期的"],
+      "late": ["晚的", "迟到的", "已故的"],
+      "strong": ["强壮的", "强烈的", "坚固的"],
+      "weak": ["弱的", "虚弱的", "稀薄的"],
+      "happy": ["快乐的", "满意的", "幸运的"],
+      "sad": ["悲伤的", "令人失望的", "难过的"]
+    };
+
+    // 添加音标数据
+    const phonetics = {
+      "run": "/rʌn/",
+      "set": "/set/",
+      "go": "/ɡəʊ/",
+      "make": "/meɪk/",
+      "take": "/teɪk/",
+      "come": "/kʌm/",
+      "get": "/ɡet/",
+      "give": "/ɡɪv/",
+      "see": "/siː/",
+      "look": "/lʊk/",
+      "find": "/faɪnd/",
+      "say": "/seɪ/",
+      "use": "/juːz/",
+      "tell": "/tel/",
+      "work": "/wɜːk/",
+      "call": "/kɔːl/",
+      "try": "/traɪ/",
+      "ask": "/ɑːsk/",
+      "need": "/niːd/",
+      "feel": "/fiːl/",
+      "read": "/riːd/",
+      "put": "/pʊt/",
+      "play": "/pleɪ/",
+      "move": "/muːv/",
+      "help": "/help/",
+      "talk": "/tɔːk/",
+      "turn": "/tɜːn/",
+      "start": "/stɑːt/",
+      "show": "/ʃəʊ/",
+      "hear": "/hɪə/",
+      "walk": "/wɔːk/",
+      "write": "/raɪt/",
+      "sit": "/sɪt/",
+      "stand": "/stænd/",
+      "lose": "/luːz/",
+      "pay": "/peɪ/",
+      "meet": "/miːt/",
+      "drive": "/draɪv/",
+      "stop": "/stɒp/",
+      "follow": "/ˈfɒləʊ/",
+      "learn": "/lɜːn/",
+      "speak": "/spiːk/",
+      "let": "/let/",
+      "keep": "/kiːp/",
+      "leave": "/liːv/",
+      "break": "/breɪk/",
+      "like": "/laɪk/",
+      "think": "/θɪŋk/",
+      "want": "/wɒnt/",
+      "open": "/ˈəʊpən/",
+      "close": "/kləʊz/",
+      "good": "/ɡʊd/",
+      "bad": "/bæd/",
+      "big": "/bɪɡ/",
+      "small": "/smɔːl/",
+      "high": "/haɪ/",
+      "low": "/ləʊ/",
+      "long": "/lɒŋ/",
+      "short": "/ʃɔːt/",
+      "hard": "/hɑːd/",
+      "easy": "/ˈiːzi/",
+      "fast": "/fɑːst/",
+      "slow": "/sləʊ/",
+      "hot": "/hɒt/",
+      "cold": "/kəʊld/",
+      "new": "/njuː/",
+      "old": "/əʊld/",
+      "right": "/raɪt/",
+      "wrong": "/rɒŋ/",
+      "early": "/ˈɜːli/",
+      "late": "/leɪt/",
+      "strong": "/strɒŋ/",
+      "weak": "/wiːk/",
+      "happy": "/ˈhæpi/",
+      "sad": "/sæd/"
+    };
+  </script>
+</body>
+</html> 
