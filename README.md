@@ -38,8 +38,8 @@ My name is Mary Alice Young.
 
 ## 🌐 在线访问
 
-访问地址：[即将生成...]
+访问地址：https://jinbeibei0098.github.io/english-video-study/
 
 ## �� 许可证
 
-MIT License 
+MIT License
