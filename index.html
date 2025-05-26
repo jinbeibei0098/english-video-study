@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>English Video Study v2.0</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin:0; padding:0; width:100%; height:100%;
+      font-family:'Fredoka',sans-serif;
+      background: linear-gradient(to bottom right,#fce4ec,#f3e5f5);
+      display:flex; flex-direction:column; overflow:hidden;
+    }
+    header { padding:10px 20px; background:#fff; display:flex; align-items:center;
+      box-shadow:0 2px 8px rgba(0,0,0,0.1);
+    }
+    header h1 { flex:1; margin:0; font-size:22px; color:#880e4f; }
+    .top-controls { display:flex; gap:10px; }
+    .top-controls button, .top-controls input {
+      padding:8px 12px; border:none; border-radius:8px;
+      background:#f06292; color:#fff; font-size:14px; cursor:pointer;
+    }
+    .top-controls input {
+      background:#fff; color:#000; border:1px solid #f06292;
+      width:80px;
+    }
+    .main-area { flex:1; display:flex; gap:20px; padding:20px; overflow:hidden; }
+    .controls, .subtitles-container {
+      flex:1; background:#fff; border-radius:16px; padding:16px;
+      box-shadow:0 4px 12px rgba(0,0,0,0.1); display:flex; flex-direction:column;
+      overflow:hidden;
+    }
+    .video-wrapper { position:relative; }
+    video {
+      width:100%; height:60vh; background:#000; border-radius:12px;
+      position:relative; z-index:2;
+    }
+    .current-sub {
+      position:absolute; bottom:60px; left:50%; transform:translateX(-50%);
+      background:rgba(0,0,0,0.6); color:#fff;
+      padding:6px 12px; border-radius:4px; font-size:18px; line-height:1.2;
+      width:calc(100% - 32px); text-align:center; z-index:3;
+      white-space:normal;
+    }
+    .circle-buttons { display:flex; justify-content:center; gap:12px; margin:16px 0; }
+    .circle-buttons button {
+      width:50px; height:50px; border:none; border-radius:50%; background:#ff6eb4;
+      color:#fff; font-size:20px; display:flex; align-items:center; justify-content:center;
+      cursor:pointer;
+    }
+    .circle-buttons button:hover { background:#ff8fcc; }
+    #status { color:#6a1b9a; font-size:14px; margin-bottom:12px; }
+    .search-area { display:flex; flex-direction:column; gap:12px; }
+    .search-controls { display:flex; gap:12px; }
+    .search-controls input {
+      flex:1; padding:12px; border:1px solid #f8bbd0; border-radius:8px; font-size:16px;
+    }
+    .search-controls button {
+      padding:12px 16px; border:none; border-radius:8px;
+      background:#f06292; color:#fff; font-size:16px;
+    }
+    .translation {
+      padding:12px; background:rgba(255,255,255,0.8); border-radius:8px;
+      font-size:16px; max-height:120px; overflow-y:auto;
+    }
+    #subtitles {
+      flex:1; overflow-y:auto; border:2px dashed #f8bbd0;
+      border-radius:12px; padding:8px; font-size:16px;
+    }
+    .subtitle-line {
+      padding:8px; margin-bottom:4px; cursor:pointer;
+      transition:background 0.2s;
+    }
+    .subtitle-line.active, .subtitle-line:hover {
+      background:#f48fb1; color:#fff;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🎓 English Video Study</h1>
+    <div class="top-controls">
+      <button onclick="videoFile.click()">Video</button>
+      <button onclick="srtFile.click()">Subtitle</button>
+      <input type="number" id="offsetInput" value="0" step="0.1" title="Offset seconds">
+    </div>
+  </header>
+
+  <input type="file" id="videoFile" accept="video/mp4,video/webm,video/x-matroska,.mkv" style="display:none">
+  <input type="file" id="srtFile" accept=".srt" style="display:none">
+
+  <div class="main-area">
+    <div class="controls">
+      <div class="video-wrapper">
+        <video id="video" controls></video>
+        <div id="currentSub" class="current-sub"></div>
+      </div>
+      <div class="circle-buttons">
+        <button id="prevBtn">&#x23EE;</button>
+        <button id="playBtn">&#x25B6;</button>
+        <button id="pauseBtn">&#x23F8;</button>
+        <button id="nextBtn">&#x23ED;</button>
+        <button id="loopBtn">&#x27F3;</button>
+        <button id="increaseBtn">A+</button>
+        <button id="decreaseBtn">A-</button>
+      </div>
+      <div id="status">Upload video and subtitle to begin</div>
+      <div style="font-size:12px;color:#666;margin-top:8px;">
+        ⌨️ 快捷键：↑上一句 ↓下一句 空格播放/暂停
+      </div>
+      <div class="search-area">
+        <div class="search-controls">
+          <input type="text" id="searchInput" placeholder="Search word...">
+          <button id="searchBtn">Search</button>
+        </div>
+        <div id="translation" class="translation"></div>
+      </div>
+    </div>
+    <div class="subtitles-container">
+      <div id="subtitles"></div>
+    </div>
+  </div>
+
+  <script>
+    const video = document.getElementById('video'),
+          videoFile = document.getElementById('videoFile'),
+          srtFile = document.getElementById('srtFile'),
+          offsetInput = document.getElementById('offsetInput'),
+          subtitlesDiv = document.getElementById('subtitles'),
+          currentSub = document.getElementById('currentSub'),
+          playBtn = document.getElementById('playBtn'),
+          pauseBtn = document.getElementById('pauseBtn'),
+          prevBtn = document.getElementById('prevBtn'),
+          nextBtn = document.getElementById('nextBtn'),
+          loopBtn = document.getElementById('loopBtn'),
+          increaseBtn = document.getElementById('increaseBtn'),
+          decreaseBtn = document.getElementById('decreaseBtn'),
+          statusDiv = document.getElementById('status'),
+          searchInput = document.getElementById('searchInput'),
+          searchBtn = document.getElementById('searchBtn'),
+          translationDiv = document.getElementById('translation');
+    let subtitles = [], currentIndex = -1, loopMode = false, fontSize = 18;
+
+    // Load video
+    videoFile.onchange = e => {
+      const f = e.target.files[0]; if (!f) return;
+      video.src = URL.createObjectURL(f);
+      video.load();
+      video.oncanplay = () => statusDiv.textContent = `🎬 Video ready: ${f.name}`;
+    };
+
+    // Load subtitles
+    srtFile.onchange = e => {
+      const f = e.target.files[0]; if (!f) return;
+      const r = new FileReader();
+      r.onload = () => {
+        subtitles = parseSRT(r.result);
+        renderSubtitles();
+        statusDiv.textContent = `📝 Subtitles loaded (${subtitles.length})`;
+      };
+      r.readAsText(f);
+    };
+
+    // Parse SRT into [{start,end,zh,en},...]
+    function parseSRT(data) {
+      const off = parseFloat(offsetInput.value) || 0;
+      const blocks = data.trim().split(/\r?\n\r?\n/);
+      const result = [];
+      
+      blocks.forEach(block => {
+        const lines = block.split(/\r?\n/);
+        if (lines.length < 4) return; // 需要至少4行：序号、时间、中文、英文
+        
+        const timeRegex = new RegExp('(\\d+):(\\d+):(\\d+),(\\d+)\\s*-->\\s*(\\d+):(\\d+):(\\d+),(\\d+)');
+        const m = lines[1].match(timeRegex);
+        if (!m) return;
+        
+        const st = +m[1]*3600 + +m[2]*60 + +m[3] + +m[4]/1000 + off;
+        const et = +m[5]*3600 + +m[6]*60 + +m[7] + +m[8]/1000 + off;
+        
+        // 第3行是中文，第4行是英文
+        const zh = lines[2]?.trim() || '';
+        const en = lines[3]?.trim() || '';
+        
+        if (zh || en) {
+          result.push({
+            start: st,
+            end: et,
+            zh: zh,
+            en: en
+          });
+        }
+      });
+      
+      return result;
+    }
+
+    // Render subtitles (中文小字在上，英文大字在下)
+    function renderSubtitles() {
+      subtitlesDiv.innerHTML = '';
+      console.log('渲染字幕，总数:', subtitles.length);
+      
+      subtitles.forEach((sub, i) => {
+        console.log(`第${i+1}组: 中文="${sub.zh}", 英文="${sub.en}"`);
+        
+        const div = document.createElement('div');
+        div.className = 'subtitle-line';
+        div.innerHTML = `
+          <p style="margin:0;color:#880e4f;font-size:12px;line-height:1.3;">${sub.zh}</p>
+          <p style="margin:4px 0 0;color:#333;font-size:24px;font-weight:500;line-height:1.2;">${sub.en}</p>
+        `;
+        div.onclick = () => jump(i);
+        subtitlesDiv.appendChild(div);
+      });
+    }
+
+    // Seek & highlight
+    function jump(idx) {
+      currentIndex = idx;
+      video.currentTime = subtitles[idx].start;
+      video.play();
+      highlight();
+    }
+
+    function highlight() {
+      const lines = subtitlesDiv.querySelectorAll('.subtitle-line');
+      lines.forEach((el,i)=>el.classList.toggle('active', i===currentIndex));
+      const active = lines[currentIndex];
+      if (active) active.scrollIntoView({behavior:'smooth', block:'center'});
+
+      // Video overlay: 中文在上(小字)，英文在下(大字)
+      if (currentIndex >= 0 && currentIndex < subtitles.length) {
+        const sub = subtitles[currentIndex];
+        currentSub.innerHTML = `
+          <div style="line-height:1.2; text-shadow:0 2px 4px rgba(0,0,0,0.8);">
+            <div style="font-size:${Math.floor(fontSize*0.6)}px; color:#f8bbd0;">${sub.zh}</div>
+            <div style="font-size:${fontSize}px; color:#fff; font-weight:500;">${sub.en}</div>
+          </div>
+        `;
+      }
+    }
+
+    video.ontimeupdate = () => {
+      const t = video.currentTime;
+      const idx = subtitles.findIndex(s=>t>=s.start&&t<s.end);
+      if (idx!==-1 && idx!==currentIndex) {
+        currentIndex = idx;
+        highlight();
+      }
+      
+      // 循环模式：当前字幕结束时重新播放
+      if (loopMode && currentIndex >= 0 && currentIndex < subtitles.length) {
+        const currentSub = subtitles[currentIndex];
+        if (t >= currentSub.end) {
+          video.currentTime = currentSub.start;
+        }
+      }
+    };
+
+    // Controls
+    prevBtn.onclick  = ()=>jump(Math.max(0, currentIndex-1));
+    nextBtn.onclick  = ()=>jump(Math.min(subtitles.length-1, currentIndex+1));
+    playBtn.onclick  = () => {
+      video.play();
+      statusDiv.textContent = '▶️ 播放中...';
+    };
+    pauseBtn.onclick = () => {
+      if (video.paused) {
+        video.play();
+        statusDiv.textContent = '▶️ 播放中...';
+      } else {
+        video.pause();
+        statusDiv.textContent = '⏸️ 已暂停';
+      }
+    };
+    loopBtn.onclick  = () => {
+      loopMode = !loopMode;
+      loopBtn.style.backgroundColor = loopMode ? '#ff8fcc' : '#ff6eb4';
+      loopBtn.style.transform = loopMode ? 'scale(1.1)' : 'scale(1)';
+      statusDiv.textContent = loopMode ? '🔄 循环模式已开启' : '⏸️ 循环模式已关闭';
+    };
+    increaseBtn.onclick = ()=>{
+      fontSize += 2;
+      currentSub.style.fontSize = fontSize+'px';
+    };
+    decreaseBtn.onclick = ()=>{
+      if (fontSize>10) fontSize -= 2, currentSub.style.fontSize = fontSize+'px';
+    };
+
+    // Keyboard controls
+    document.addEventListener('keydown', (e) => {
+      // 防止在输入框中触发
+      if (e.target.tagName === 'INPUT') return;
+      
+      switch(e.key) {
+        case 'ArrowUp':
+          e.preventDefault();
+          // 上一句
+          if (currentIndex > 0) {
+            jump(currentIndex - 1);
+          }
+          break;
+        case 'ArrowDown':
+          e.preventDefault();
+          // 下一句
+          if (currentIndex < subtitles.length - 1) {
+            jump(currentIndex + 1);
+          }
+          break;
+        case ' ':
+          e.preventDefault();
+          // 空格键播放/暂停切换
+          if (video.paused) {
+            video.play();
+            statusDiv.textContent = '▶️ 播放中...';
+          } else {
+            video.pause();
+            statusDiv.textContent = '⏸️ 已暂停';
+          }
+          break;
+      }
+    });
+
+    // Search & translate
+    searchBtn.onclick = () => {
+      const w = searchInput.value.trim(); if (!w) return;
+      translationDiv.innerHTML = '<p>🔍 Translating...</p>';
+      let engHtml = '';
+      fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${w}`)
+        .then(r=>r.json())
+        .then(js=>{
+          js[0]?.meanings.forEach(m=>{
+            engHtml += `<p><strong>${m.partOfSpeech}：</strong>${m.definitions[0]?.definition||''}</p>`;
+            if (m.definitions[0]?.example) engHtml += `<p>例：${m.definitions[0].example}</p>`;
+          });
+        }).catch(()=>engHtml='<p>English fetch error</p>')
+        .finally(()=>{
+          fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(w)}&langpair=en|zh-CN`)
+            .then(r=>r.json())
+            .then(data=>{
+              translationDiv.innerHTML = `<p><strong>中文解释：</strong>${data.responseData.translatedText}</p>${engHtml}`;
+            })
+            .catch(()=>translationDiv.innerHTML = `<p>中文 fetch error</p>${engHtml}`);
+        });
+    };
+  </script>
+</body>
+</html>
+
